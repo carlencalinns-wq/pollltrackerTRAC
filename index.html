@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TracPoll — Decentralized P2P Polling</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --border: #1e1e2e;
+    --accent: #00ff88;
+    --accent2: #ff3366;
+    --accent3: #7c3aff;
+    --text: #e8e8f0;
+    --muted: #5a5a72;
+    --card: #13131f;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Glow orbs */
+  body::after {
+    content: '';
+    position: fixed;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(124,58,255,0.08) 0%, transparent 70%);
+    top: -200px; right: -200px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .glow-orb {
+    position: fixed;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(0,255,136,0.06) 0%, transparent 70%);
+    bottom: -100px; left: -100px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* HEADER */
+  header {
+    padding: 32px 0 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    border: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 16px;
+    color: var(--accent);
+    position: relative;
+    animation: pulse-border 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-border {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,136,0.3); }
+    50% { box-shadow: 0 0 0 6px rgba(0,255,136,0); }
+  }
+
+  .logo-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .logo-text span { color: var(--accent); }
+
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--accent);
+    border: 1px solid rgba(0,255,136,0.3);
+    padding: 4px 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: blink 1.5s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* HERO */
+  .hero {
+    padding: 60px 0 48px;
+    text-align: center;
+  }
+
+  .hero-tag {
+    display: inline-block;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 5px 14px;
+    margin-bottom: 24px;
+  }
+
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(38px, 6vw, 72px);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -2px;
+    margin-bottom: 20px;
+  }
+
+  .hero h1 .line2 {
+    display: block;
+    -webkit-text-stroke: 1px var(--accent);
+    color: transparent;
+  }
+
+  .hero p {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.8;
+    max-width: 520px;
+    margin: 0 auto 36px;
+  }
+
+  .hero-stats {
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    margin-bottom: 48px;
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+    display: block;
+    animation: count-up 2s ease-out forwards;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  /* CREATE POLL SECTION */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .section-header h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .section-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .create-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 28px;
+    margin-bottom: 48px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .create-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent3), var(--accent2));
+  }
+
+  .form-group {
+    margin-bottom: 18px;
+  }
+
+  label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  input[type="text"], textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input[type="text"]:focus, textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(0,255,136,0.1);
+  }
+
+  textarea { resize: vertical; min-height: 80px; }
+
+  .options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .option-input {
+    position: relative;
+  }
+
+  .option-label {
+    position: absolute;
+    left: 12px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    color: var(--accent3);
+    font-weight: 700;
+    pointer-events: none;
+  }
+
+  .option-input input {
+    padding-left: 36px;
+  }
+
+  .btn-add-option {
+    background: none;
+    border: 1px dashed var(--border);
+    color: var(--muted);
+    padding: 10px;
+    width: 100%;
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    transition: all 0.2s;
+    margin-bottom: 18px;
+  }
+
+  .btn-add-option:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .btn-create {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    padding: 14px 28px;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-create::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.4s;
+  }
+
+  .btn-create:hover::after { transform: translateX(100%); }
+  .btn-create:hover { box-shadow: 0 0 20px rgba(0,255,136,0.4); }
+  .btn-create:active { transform: scale(0.99); }
+
+  /* POLLS LIST */
+  .polls-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 60px;
+  }
+
+  .poll-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 24px;
+    position: relative;
+    transition: border-color 0.2s;
+    animation: slide-in 0.4s ease-out forwards;
+    opacity: 0;
+  }
+
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .poll-card:hover { border-color: rgba(0,255,136,0.2); }
+
+  .poll-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .poll-id {
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 1px;
+  }
+
+  .poll-time {
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .poll-question {
+    font-family: 'Syne', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 18px;
+    line-height: 1.3;
+  }
+
+  .poll-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+
+  .poll-option {
+    cursor: pointer;
+    position: relative;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    overflow: hidden;
+  }
+
+  .poll-option:hover:not(.voted) {
+    border-color: var(--accent3);
+  }
+
+  .poll-option.voted-this {
+    border-color: var(--accent);
+  }
+
+  .option-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    background: rgba(0,255,136,0.07);
+    transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+    pointer-events: none;
+  }
+
+  .option-fill.other { background: rgba(124,58,255,0.07); }
+
+  .option-text {
+    font-size: 13px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .option-pct {
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 700;
+    position: relative;
+    z-index: 1;
+  }
+
+  .poll-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .vote-count {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .vote-count span {
+    color: var(--accent3);
+    font-weight: 700;
+  }
+
+  .tag-badge {
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--accent2);
+    border: 1px solid rgba(255,51,102,0.3);
+    padding: 3px 8px;
+  }
+
+  /* P2P LOG */
+  .log-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 16px 20px;
+    margin-bottom: 60px;
+    font-size: 11px;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+
+  .log-line {
+    color: var(--muted);
+    margin-bottom: 4px;
+    display: flex;
+    gap: 10px;
+    animation: fade-in 0.3s ease;
+  }
+
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+  .log-ts { color: var(--accent3); flex-shrink: 0; }
+  .log-type-vote { color: var(--accent); }
+  .log-type-poll { color: var(--accent2); }
+  .log-type-sync { color: var(--muted); }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 28px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .trac-address {
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* MODAL OVERLAY */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-overlay.active { display: flex; }
+
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--accent);
+    padding: 32px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    animation: modal-in 0.3s ease;
+    box-shadow: 0 0 60px rgba(0,255,136,0.15);
+  }
+
+  @keyframes modal-in {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .modal-icon {
+    font-size: 40px;
+    margin-bottom: 16px;
+  }
+
+  .modal h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 10px;
+    color: var(--accent);
+  }
+
+  .modal p {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.8;
+    margin-bottom: 24px;
+  }
+
+  .btn-close {
+    background: none;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 10px 28px;
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    transition: all 0.2s;
+  }
+
+  .btn-close:hover { background: var(--accent); color: var(--bg); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+</style>
+</head>
+<body>
+
+<div class="glow-orb"></div>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">TP</div>
+      <div class="logo-text">Trac<span>Poll</span></div>
+    </div>
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      P2P LIVE
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-tag">Built on Trac Intercom</div>
+    <h1>
+      Decentralized
+      <span class="line2">Polling.</span>
+    </h1>
+    <p>Create trustless polls. Votes broadcast over Intercom P2P sidechannels. Results committed to replicated state. No servers. No middlemen.</p>
+    <div class="hero-stats">
+      <div class="stat">
+        <span class="stat-num" id="stat-polls">0</span>
+        <span class="stat-label">Polls Active</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" id="stat-votes">0</span>
+        <span class="stat-label">Votes Cast</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" id="stat-peers">0</span>
+        <span class="stat-label">Peers Connected</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE POLL -->
+  <div class="section-header">
+    <h2>Create Poll</h2>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="create-card">
+    <div class="form-group">
+      <label>Poll Question</label>
+      <input type="text" id="pollQuestion" placeholder="What should we build next?" />
+    </div>
+
+    <div class="form-group">
+      <label>Description (optional)</label>
+      <textarea id="pollDesc" placeholder="Add context for voters..."></textarea>
+    </div>
+
+    <label>Options</label>
+    <div class="options-grid" id="optionsGrid">
+      <div class="option-input">
+        <span class="option-label">A</span>
+        <input type="text" placeholder="Option A" />
+      </div>
+      <div class="option-input">
+        <span class="option-label">B</span>
+        <input type="text" placeholder="Option B" />
+      </div>
+      <div class="option-input">
+        <span class="option-label">C</span>
+        <input type="text" placeholder="Option C" />
+      </div>
+      <div class="option-input">
+        <span class="option-label">D</span>
+        <input type="text" placeholder="Option D" />
+      </div>
+    </div>
+    <button class="btn-add-option" id="btnAddOption">+ Add Option</button>
+
+    <div class="form-row">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Category Tag</label>
+        <input type="text" id="pollTag" placeholder="e.g. GOVERNANCE" />
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Your Trac Address</label>
+        <input type="text" id="tracAddr" placeholder="trac1..." />
+      </div>
+    </div>
+
+    <br>
+    <button class="btn-create" id="btnCreate">⬡ Broadcast Poll to Network</button>
+  </div>
+
+  <!-- ACTIVE POLLS -->
+  <div class="section-header">
+    <h2>Active Polls</h2>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="polls-grid" id="pollsGrid"></div>
+
+  <!-- P2P LOG -->
+  <div class="section-header">
+    <h2>P2P Event Log</h2>
+    <div class="section-line"></div>
+  </div>
+  <div class="log-card" id="p2pLog"></div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div>TracPoll v0.1.0 · Trac Intercom P2P</div>
+    <div>Trac Address: <span class="trac-address" id="footerTrac">ADD_YOUR_TRAC_ADDRESS_HERE</span></div>
+  </footer>
+
+</div>
+
+<!-- SUCCESS MODAL -->
+<div class="modal-overlay" id="successModal">
+  <div class="modal">
+    <div class="modal-icon">⬡</div>
+    <h3>Poll Broadcasted!</h3>
+    <p>Your poll has been signed and broadcast to all connected peers via Intercom sidechannels. Results will sync to the shared replicated state layer.</p>
+    <button class="btn-close" onclick="closeModal()">Got it</button>
+  </div>
+</div>
+
+<script>
+// ── TracPoll App Logic ──────────────────────────────────────────────
+
+const OPTION_LABELS = ['A','B','C','D','E','F'];
+let optionCount = 4;
+let polls = [];
+let totalVotes = 0;
+const peersCount = Math.floor(Math.random() * 8) + 3;
+
+// Seed polls
+const seedPolls = [
+  {
+    id: 'POLL-' + randomId(),
+    question: 'Which chain should TracPoll bridge to first?',
+    desc: 'Select the next chain integration for cross-chain polling.',
+    tag: 'GOVERNANCE',
+    options: ['Solana', 'Ethereum', 'Bitcoin L2', 'TON'],
+    votes: [14, 9, 22, 5],
+    ts: Date.now() - 1800000,
+    userVoted: false,
+  },
+  {
+    id: 'POLL-' + randomId(),
+    question: 'What should the default poll duration be?',
+    desc: '',
+    tag: 'UX',
+    options: ['24 hours', '3 days', '1 week'],
+    votes: [8, 31, 11],
+    ts: Date.now() - 7200000,
+    userVoted: false,
+  },
+];
+
+polls = seedPolls;
+updateStats();
+renderPolls();
+startP2PSimulator();
+
+// ── Render ──────────────────────────────────────────────────────────
+
+function renderPolls() {
+  const grid = document.getElementById('pollsGrid');
+  grid.innerHTML = '';
+  polls.forEach((poll, idx) => {
+    const card = createPollCard(poll, idx);
+    grid.appendChild(card);
+  });
+}
+
+function createPollCard(poll, idx) {
+  const card = document.createElement('div');
+  card.className = 'poll-card';
+  card.style.animationDelay = idx * 0.07 + 's';
+
+  const total = poll.votes.reduce((a, b) => a + b, 0) || 1;
+
+  let optionsHtml = poll.options.map((opt, i) => {
+    const pct = Math.round((poll.votes[i] / total) * 100);
+    const fillClass = i % 2 === 0 ? '' : 'other';
+    const isVotedThis = poll.votedIndex === i ? 'voted-this' : '';
+    return `
+      <div class="poll-option ${isVotedThis} ${poll.userVoted ? 'voted' : ''}"
+           onclick="castVote('${poll.id}', ${i})">
+        <div class="option-fill ${fillClass}" style="width:${poll.userVoted ? pct : 0}%"></div>
+        <span class="option-text">${OPTION_LABELS[i]}. ${opt}</span>
+        ${poll.userVoted ? `<span class="option-pct">${pct}%</span>` : ''}
+      </div>`;
+  }).join('');
+
+  card.innerHTML = `
+    <div class="poll-meta">
+      <span class="poll-id">${poll.id}</span>
+      <span class="poll-time">${timeAgo(poll.ts)}</span>
+    </div>
+    <div class="poll-question">${poll.question}</div>
+    ${poll.desc ? `<p style="font-size:12px;color:var(--muted);margin-bottom:14px;">${poll.desc}</p>` : ''}
+    <div class="poll-options">${optionsHtml}</div>
+    <div class="poll-footer">
+      <span class="vote-count"><span>${poll.votes.reduce((a,b)=>a+b,0)}</span> votes recorded on-chain</span>
+      <span class="tag-badge">${poll.tag || 'GENERAL'}</span>
+    </div>
+  `;
+  return card;
+}
+
+// ── Actions ─────────────────────────────────────────────────────────
+
+function castVote(pollId, optionIdx) {
+  const poll = polls.find(p => p.id === pollId);
+  if (!poll || poll.userVoted) return;
+  poll.votes[optionIdx]++;
+  poll.userVoted = true;
+  poll.votedIndex = optionIdx;
+  totalVotes++;
+  updateStats();
+  renderPolls();
+  addLog('vote', `Voted on ${pollId} → Option ${OPTION_LABELS[optionIdx]} — broadcasting to peers...`);
+  setTimeout(() => addLog('sync', `${pollId} vote committed to replicated state layer`), 900);
+}
+
+document.getElementById('btnCreate').addEventListener('click', () => {
+  const q = document.getElementById('pollQuestion').value.trim();
+  if (!q) { alert('Please enter a poll question.'); return; }
+
+  const inputs = document.querySelectorAll('#optionsGrid input');
+  const options = Array.from(inputs).map(i => i.value.trim()).filter(Boolean);
+  if (options.length < 2) { alert('Please enter at least 2 options.'); return; }
+
+  const tag = document.getElementById('pollTag').value.trim().toUpperCase() || 'GENERAL';
+  const desc = document.getElementById('pollDesc').value.trim();
+
+  const poll = {
+    id: 'POLL-' + randomId(),
+    question: q,
+    desc,
+    tag,
+    options,
+    votes: options.map(() => 0),
+    ts: Date.now(),
+    userVoted: false,
+  };
+
+  polls.unshift(poll);
+  updateStats();
+  renderPolls();
+  addLog('poll', `New poll ${poll.id} broadcast to network — "${q}"`);
+
+  document.getElementById('pollQuestion').value = '';
+  document.getElementById('pollDesc').value = '';
+  document.getElementById('pollTag').value = '';
+  document.querySelectorAll('#optionsGrid input').forEach(i => i.value = '');
+  document.getElementById('successModal').classList.add('active');
+});
+
+document.getElementById('btnAddOption').addEventListener('click', () => {
+  if (optionCount >= 6) return;
+  optionCount++;
+  const grid = document.getElementById('optionsGrid');
+  const div = document.createElement('div');
+  div.className = 'option-input';
+  div.innerHTML = `<span class="option-label">${OPTION_LABELS[optionCount-1]}</span><input type="text" placeholder="Option ${OPTION_LABELS[optionCount-1]}" />`;
+  grid.appendChild(div);
+});
+
+function closeModal() {
+  document.getElementById('successModal').classList.remove('active');
+}
+
+// ── P2P Simulator ────────────────────────────────────────────────────
+
+function startP2PSimulator() {
+  addLog('sync', `Connected to ${peersCount} peers on Intercom network`);
+  addLog('sync', `Replicated state layer synced — ${polls.length} polls loaded`);
+
+  setInterval(() => {
+    if (polls.length === 0) return;
+    const poll = polls[Math.floor(Math.random() * polls.length)];
+    const optIdx = Math.floor(Math.random() * poll.options.length);
+    poll.votes[optIdx]++;
+    totalVotes++;
+    updateStats();
+    renderPolls();
+    addLog('vote', `Peer vote received on ${poll.id} → Option ${OPTION_LABELS[optIdx]}`);
+  }, 4500 + Math.random() * 3000);
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────
+
+function addLog(type, msg) {
+  const log = document.getElementById('p2pLog');
+  const ts = new Date().toISOString().substr(11, 8);
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-ts">${ts}</span><span class="log-type-${type}">[${type.toUpperCase()}]</span><span>${msg}</span>`;
+  log.insertBefore(line, log.firstChild);
+  if (log.children.length > 30) log.removeChild(log.lastChild);
+}
+
+function updateStats() {
+  animCount('stat-polls', polls.length);
+  animCount('stat-votes', polls.reduce((s, p) => s + p.votes.reduce((a,b)=>a+b,0), 0));
+  animCount('stat-peers', peersCount);
+}
+
+function animCount(id, target) {
+  const el = document.getElementById(id);
+  const current = parseInt(el.textContent) || 0;
+  if (current === target) return;
+  const step = Math.ceil(Math.abs(target - current) / 8);
+  const dir = target > current ? 1 : -1;
+  let val = current;
+  const iv = setInterval(() => {
+    val += dir * step;
+    if ((dir > 0 && val >= target) || (dir < 0 && val <= target)) {
+      val = target; clearInterval(iv);
+    }
+    el.textContent = val;
+  }, 40);
+}
+
+function timeAgo(ts) {
+  const diff = Date.now() - ts;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return m + 'm ago';
+  return Math.floor(m/60) + 'h ago';
+}
+
+function randomId() {
+  return Math.random().toString(36).substr(2, 8).toUpperCase();
+}
+</script>
+</body>
+</html>
